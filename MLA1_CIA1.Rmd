@@ -1,0 +1,282 @@
+---
+title: "MLA1_CIA1 - Domain-Specific Model Building"
+author: "Ajay Tom (2227002)"
+date: "2023-08-02"
+output: html_document
+---
+**Disclaimer:** The background story provided for the dataset is entirely fictional and has no relation to any real location or organization. The purpose of the fictional context is solely for illustrative and explanatory purposes. The dataset itself is generic and does not represent any specific data related to Bengaluru or BESCOM. All the variables and interpretations provided are for demonstrative use only and should not be construed as reflecting any actual data or real-world situation.
+
+# 1. Business Understanding
+## 1.1. Industry
+The Energy Management industry focuses on optimizing energy use, reducing wastage, and promoting sustainable practices for businesses and individuals. It involves monitoring, analyzing, and implementing strategies to improve energy efficiency and reduce environmental impact.
+
+## 1.2. Detailed Problem Statement
+Bengaluru experiences extreme temperatures during the summer, leading to increased reliance on air conditioning and cooling systems in commercial and residential buildings. This surge in cooling loads can lead to overloading of the electricity distribution system, causing potential blackouts, reduced service reliability, and increased operating costs. Therefore, understanding the factors that influence cooling load demands is crucial for enhancing energy efficiency and sustainability.
+The specific problem is to investigate the influence of different building characteristics on cooling load demands experienced by various buildings throughout Bengaluru during the hot summer months. 
+This investigation aims to determine the key building attributes that significantly contribute to higher cooling loads and how these attributes vary across different areas and building types.
+
+## 1.3. Objectives
+•	Identify significant building characteristics impacting cooling load demands during Bengaluru’s hot summer season.
+•	Investigate individual features’ effects on cooling load, understanding their positive or negative influences.
+•	Develop a predictive model for forecasting future summer cooling load demands, aiding effective energy distribution planning.
+
+# 2. Data Understanding & Data Preparation
+
+```{r}
+#1. Import
+# Load the required package
+library(readxl)
+
+# Set the file path
+file_path <- "C:/Users/imaja/OneDrive/Desktop/MBA 2022 -2024/T4/MLA1/CIA1/energy+efficiency/bescom_load_data.xlsx"
+
+
+# Read the data from the Excel file
+bescom_df <- read_excel(file_path)
+
+# View the first few rows of the data
+library(DT)
+datatable(bescom_df)
+```
+
+
+```{r}
+#2. Data Transformation
+#The headers doesn't seem readable. Let's rename it!
+# Set meaningful column names
+colnames(bescom_df) <- c("relative_compactness", "surface_area", "wall_area", "roof_area",
+                         "overall_height", "orientation", "glazing_area", "glazing_area_distribution",
+                         "heating_load", "cooling_load")
+
+# View the updated dataframe
+datatable(bescom_df)
+
+```
+## Data Dictionary
+
+**Independent Variables (Features):**
+
+**X1: Relative Compactness**
+
+This variable represents the relative compactness of the building. It is a dimensionless quantity that measures how closely the building shape approaches a square. Higher values of relative compactness indicate a more compact and efficient building shape.
+
+**X2: Surface Area**
+
+Surface Area represents the total surface area of the building, measured in square meters. It includes the area of walls, roof, and glazing.
+
+**X3: Wall Area**
+
+Wall Area represents the total area of the building's external walls, measured in square meters. It is a subset of the total surface area (X2) and excludes the roof and glazing areas.
+
+**X4: Roof Area**
+
+Roof Area represents the total area of the building's roof, measured in square meters. It is also a subset of the total surface area (X2) and excludes the walls and glazing areas.
+
+**X5: Overall Height**
+
+Overall Height represents the height of the building, measured in meters.
+
+**X6: Orientation**
+
+Orientation represents the compass direction the building faces. It indicates the building's main exposure to sunlight.
+
+**X7: Glazing Area**
+
+Glazing Area represents the total area of windows or glazing on the building's external surfaces, measured in square meters.
+
+**X8: Glazing Area Distribution**
+
+Glazing Area Distribution indicates how the glazing is distributed on the building's external walls. It could be a categorical variable representing different patterns of window distribution.
+
+
+**Dependent Variables (Responses):**
+
+**y1: Heating Load**
+
+Heating Load represents the amount of energy required to heat the building, measured in heating load units. It quantifies the energy demand for maintaining the indoor temperature in cold weather conditions.
+
+**y2: Cooling Load**
+
+Cooling Load represents the amount of energy required to cool the building, measured in cooling load units. It quantifies the energy demand for maintaining the indoor temperature in hot weather conditions.
+
+```{r}
+
+
+#2. EDA
+# Load required libraries
+library(ggplot2)
+
+# Summary statistics
+summary(bescom_df)
+
+# Correlation matrix
+cor_matrix <- cor(bescom_df)  
+print(cor_matrix)
+# Plot correlation matrix as a heatmap
+library(DataExplorer)
+plot_correlation(bescom_df)
+
+
+# Check for missing values
+library(DataExplorer)
+plot_missing(bescom_df)
+
+```
+
+# 3. Modelling
+
+```{r}
+#Shuffle Data
+
+set.seed(123) 
+bescom_mixed <-bescom_df[order(runif(1:nrow(bescom_df))),]
+
+#75% training data, 25% test data
+bescom_train <- bescom_mixed[1:(0.75*nrow(bescom_df)),]
+bescom_test <- bescom_mixed[((0.75*nrow(bescom_df))+1):nrow(bescom_df),]
+
+lm_bescom_full <- lm(cooling_load ~ . - heating_load, data = bescom_train)
+summary(lm_bescom_full)
+
+```
+# 4. Evaluation
+When interpreting the model results, we can make the following observations:
+
+1. The independent variables 'orientation' and 'glazing_area_distribution' have p-values greater than 0.05. This indicates that these variables are not statistically significant in explaining the variance of the cooling_load and do not have a significant impact on the target variable.
+
+2. Despite the two non-significant variables, the overall model performance is quite good, as indicated by the high R-squared value of 89.62%. This means that approximately 89.62% of the variance in the cooling_load can be explained by the combination of the significant independent variables in the model.
+
+3. The p-value of the entire model is extremely small (p-value: < 2.2e-16), indicating strong statistical significance. This suggests that the model as a whole is valuable in predicting cooling_load and provides a better fit to the data than an intercept-only model.
+
+4. It's important to note that the column 'roof_area' gave all values as NA. This issue might be due to perfect multicollinearity or other data-related problems. Further investigation is needed to understand why 'roof_area' is not contributing to the model.
+
+## 4.1. Reduced Models
+
+```{r}
+#reduced - 1st
+lm_bescom_reduced1 <- lm(cooling_load ~ . - heating_load - roof_area, data = bescom_train)
+summary(lm_bescom_reduced1)
+
+#reduced - 2nd
+lm_bescom_reduced2 <- lm(cooling_load ~ . - heating_load - roof_area - orientation, data = bescom_train)
+summary(lm_bescom_reduced2)
+
+#reduced - 3rd
+lm_bescom_reduced3 <- lm(cooling_load ~ . - heating_load - roof_area - orientation - glazing_area_distribution, data = bescom_train)
+summary(lm_bescom_reduced3)
+```
+
+After conducting stepwise regression, the results indicate that the variables relative_compactness, surface_area, wall_area, overall_height, and glazing_area are all highly significant in determining cooling_load. The R-squared value of 0.8958 suggests that approximately 89.58% of the variance in cooling_load can be explained by these significant independent variables, which is indicative of a well-fitting model.
+
+Furthermore, the extremely small p-value of the model (< 2.2e-16) signifies a highly significant overall model. This indicates that the combined effect of the selected independent variables provides substantial predictive power for cooling_load and yields a superior fit to the data compared to an intercept-only model.
+
+## 5. Decision Making
+
+
+The provided regression equation is used to predict the cooling_load based on various building characteristics. The equation takes into account the coefficients of the significant independent variables and the intercept term.
+
+Key Predictors: The coefficients of the independent variables in the equation indicate their impact on the cooling_load. Among the independent variables, relative_compactness, wall_area, surface_area, overall_height, and glazing_area are identified as significant predictors of the cooling_load. These variables have non-zero coefficients, indicating they influence the cooling energy demand of buildings in Bengaluru during hot summer months.
+
+### Impact of Building Characteristics:
+
+relative_compactness: Buildings with higher relative compactness (more square-like shape) tend to have lower cooling loads. This is because compact buildings have less external surface area, reducing the heat gain from the surrounding environment.
+wall_area: An increase in the wall area of a building is associated with a slight increase in cooling load. This suggests that buildings with larger external walls may experience slightly higher cooling energy demands.
+surface_area: Buildings with larger surface areas, which include walls, roof, and glazing, tend to require less cooling energy. This might be due to the thermal mass of larger buildings, leading to better heat absorption and distribution.
+overall_height: Taller buildings demand more cooling energy. This is likely because taller structures have increased volume and exposure to the external environment, leading to higher heat absorption and retention.
+glazing_area: Buildings with larger glazing areas (windows) have significantly higher cooling load demands. This is because glass allows more solar heat to enter the building, increasing the cooling energy needed to maintain indoor comfort.
+Model Fit: The R-squared value (not provided in the equation) indicates that approximately 89.58% of the variance in the cooling_load can be explained by the significant independent variables in the model. This suggests that the model fits the data reasonably well and provides a good representation of the relationship between the independent variables and the cooling_load.
+
+### Decision Justification:
+
+Based on the regression equation and its interpretations, the decision is to focus on the significant independent variables (relative_compactness, wall_area, surface_area, overall_height, and glazing_area) to understand and manage cooling load demands in buildings in Bengaluru during the hot summer months. These variables play crucial roles in influencing the cooling energy requirements of buildings, and understanding their impact can help in several ways:
+
+**1. Energy Efficiency:** The findings suggest that promoting buildings with higher relative compactness and smaller glazing areas could lead to more energy-efficient designs. This knowledge can guide architects and builders to develop structures that require less cooling energy, contributing to sustainability and reduced environmental impact.
+
+**2. Building Design and Retrofitting:** For existing buildings, the knowledge of significant predictors can inform retrofitting strategies. For example, improving insulation on walls or roofs, optimizing window sizes, or using shading devices on windows can help reduce cooling loads.
+
+**3. Urban Planning:** The study's results can guide urban planners in making informed decisions regarding building heights and densities. Compact urban designs with appropriate glazing-to-wall ratios may result in lower overall cooling energy demands for the city.
+
+**4. Energy Management:** Understanding the contribution of each variable can help energy providers like BESCOM better manage electricity distribution during peak cooling load periods. This can prevent blackouts, improve service reliability, and optimize energy distribution during extreme temperatures.
+
+
+# 6. Detailed Model Evaluation
+
+As a Data Scientist at BESCOM, I shouldn't stop at just surface level Model Evaluation, the ML models require constant evaluation to make sure that the recommendations should be updated based on the ML model's limitations too. Therefore, the regression assumptions tests are performed:
+
+```{r}
+#Model Evaluation
+bescom_predict <- predict(lm_bescom_reduced3, newdata = bescom_test[c(-10)])
+library(ggplot2)
+# Combine actual and predicted values into a data frame
+results <- data.frame(Actual = bescom_test$cooling_load, Predicted = bescom_predict)
+
+# Create the best predicted vs. actual graph
+ggplot(results, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "blue", alpha = 0.7) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  labs(x = "Actual", y = "Predicted", title = "Predicted vs. Actual") +
+  theme_minimal()
+```
+
+
+# 6.1 Normality
+
+## Ho: The residuals follows a normal distribution.
+## H1: The residuals do not follow a normal distribution.
+
+```{r}
+
+#Calculating Residuals
+bescom_residuals <- bescom_test$cooling_load - bescom_predict
+
+library(DataExplorer)
+plot_density(bescom_residuals)
+
+library(nortest)
+ad.test(bescom_residuals)
+
+library(car)
+qqPlot(bescom_residuals)
+```
+The p-value is less than 0.05, therefore the residuals do not follow a normal distribution.
+
+
+# 6.2 Independence
+
+## Ho: There is no autocorrelation in the residuals.
+## H1: There is some autocorrelation present in the residuals
+
+```{r}
+library(lmtest)
+durbinWatsonTest(bescom_residuals)
+durbinWatsonTest(lm_bescom_reduced3)
+
+```
+Based on the Durbin Watson Test on the residuals we can see that the value = 1.799136. That is, the autocorrelation is very less.
+
+Further validating this with the help of durbinWatsonTest(lm_bescom_reduced3), we see that the p value = 0.588. Thus the null hypothesis is accepted. Which means that ‘There is no autocorrelation in the residuals’
+
+
+# 6.3 Linearity
+
+```{r}
+crPlots(lm_bescom_reduced3)
+```
+
+Residuals shows a linear relationship.
+
+
+# 6.4 Homoskedasticity
+
+## Ho: The residuals are homoskedastic (constant variance)
+## H1: The residuals are heteroskedastic (varying variance)
+
+```{r}
+ncvTest(lm_bescom_reduced3)
+```
+
+Based on the Breusch-Pagan / Cook-Weisberg test for heteroskedasticity in a linear regression model, we can say that the residuals are heteroskedastic. That is, they are having varying variance.
+
+It is important to identify the source of heteroskedasticity and correct it if possible, in order to obtain accurate estimates of the model parameters and standard errors.
+
+## It is important to consider these violation of assumptions - Normality and Homoskedasticity. of residuals and look into other ML models to predict the Cooling Load of Bengaluru. Although since the other 2 assumptions were satisfied, we're good to start tackling this problem with Multiple Linear Regression. 
